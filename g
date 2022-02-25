@@ -7,7 +7,18 @@ max_open_prs_to_fetch=9999
 # TODO: We should fix this in Jira to actually match up properly.
 jira_statuses="OPEN\nIN PROGRESS\nIN REVIEW\nQA VERIFICATION\nCLOSED"
 
+# Util functions
+
+select_date() {
+  read -r -p "Enter number of weeks before today: " weeks
+  date -d "$date -$weeks weeks" +%Y-%m-%d
+}
+
 # GitHub
+
+list_github_contributors() {
+  gh api '/repos/{owner}/{repo}/collaborators' | jq -r 'map(.login) | .[]'
+}
 
 check_pr_ci_status() {
 	pr="$1"
@@ -35,9 +46,16 @@ list_my_open_prs() {
 	gh pr list -L "$max_open_prs_to_fetch" --search "is:open author:@me"
 }
 
+list_finished_reviews_by_user() {
+  user="$(list_github_contributors | fzf --reverse --prompt 'Select GitHub Contributor: ')"
+  date="$(select_date)"
+  echo -n -e "\033[0;31mReviews completed since $date:\033[0m"
+  gh pr list -L "$max_open_prs_to_fetch" --search "closed:>$date reviewed-by:$user" 2>/dev/null
+}
+
 show_github_options() {
-	actions="View Open PRs\nCheckout\nCreate\nCheck CI Status\nList My Open PRs"
-	command="$(echo -e "$actions" | fzf --reverse --prompt 'Select PR action:')"
+	actions="View Open PRs\nCheckout\nCreate\nCheck CI Status\nList My Open PRs\nList Finished Reviews By User"
+	command="$(echo -e "$actions" | fzf --reverse --prompt 'Select PR action: ')"
 
 	case "$command" in
 		"View Open PRs")
@@ -55,6 +73,9 @@ show_github_options() {
 		"List My Open PRs")
 			list_my_open_prs
 			;;
+    "List Finished Reviews By User")
+      list_finished_reviews_by_user
+      ;;
 
 	esac
 }
@@ -65,7 +86,7 @@ select_jira_ticket() {
 	status="$1"
 
 	if [ -z "$status" ]; then
-		status="$(echo -e "${jira_statuses}""\nALL" | fzf --reverse --prompt 'Search for ticket in status:')"
+		status="$(echo -e "${jira_statuses}""\nALL" | fzf --reverse --prompt 'Search for ticket in status: ')"
 	fi
 
 	if [ "$status" = "ALL" ]; then
@@ -101,7 +122,7 @@ start_jira_ticket() {
 transition_jira_ticket() {
 	# jira transition --noedit -o "priority:Medium" "Ready for Review" WCO-1271
 	ticket="$(select_jira_ticket "ALL")"
-	state="$(view_jira_ticket_transitions "$ticket" | fzf --reverse --prompt 'Select New Ticket State:')"
+	state="$(view_jira_ticket_transitions "$ticket" | fzf --reverse --prompt 'Select New Ticket State: ')"
 	# Priority is required to be set when transitioning, Medium is default in the web UI.
 	jira transition --noedit -o "priority:Medium" "$state" "$ticket"
 }
@@ -133,19 +154,34 @@ show_jira_options() {
 	esac
 }
 
-actions="PRs\nJira Tickets\nGit"
-command="$(echo -e "$actions" | fzf --reverse --prompt 'Choose an action:')"
+# Git
+
+list_git_authors() {
+  git log --pretty=format:"%an" | sort -u
+}
+
+choose_git_author() {
+  echo -e "$(list_git_authors)" | fzf --reverse --prompt 'Select A Git Author: '
+}
+
+view_git_shortlog() {
+  author="$(choose_git_author)"
+  date="$(select_date)"
+  git shortlog --author "$author" --reverse --since "$date"
+}
+
+actions="GitHub\nJira\nView Git Shortlog"
+command="$(echo -e "$actions" | fzf --reverse --prompt 'Choose an action: ')"
 
 case "$command" in
-	"PRs")
+	"GitHub")
 		show_github_options
 		;;
-	"Jira Tickets")
+	"Jira")
 		show_jira_options
 		;;
-	"Git")
-		# TODO: check ~/tool.md
-		echo "Got Git"
+	"View Git Shortlog")
+    view_git_shortlog
 		;;
 esac
 
