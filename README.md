@@ -6,6 +6,7 @@ Bash to glue together GitHub's CLI tool with the [go-jira](https://github.com/go
 
 The following programs must be installed:
 
+- [jq](https://stedolan.github.io/jq/)
 - [fzf](https://github.com/junegunn/fzf)
 - [gh (github cli)](https://cli.github.com/)
 - [go-jira](https://github.com/go-jira/jira) - Configure `go-jira` to use an api token (see https://github.com/go-jira/jira#private-jira-service)

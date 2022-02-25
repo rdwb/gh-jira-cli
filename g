@@ -43,7 +43,7 @@ create_pr() {
 }
 
 list_my_open_prs() {
-	gh pr list -L "$max_open_prs_to_fetch" --search "is:open author:@me"
+	gh pr list -L "$max_open_prs_to_fetch" --search "is:open author:@me" 2>/dev/null
 }
 
 list_finished_reviews_by_user() {
