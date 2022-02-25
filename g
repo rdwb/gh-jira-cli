@@ -35,7 +35,7 @@ view_open_pr() {
 }
 
 checkout_pr() {
-	gh pr view "$(gh pr list -L $max_open_prs_to_fetch | fzf --reverse | cut -f 1)"
+	gh pr checkout "$(gh pr list -L $max_open_prs_to_fetch | fzf --reverse | cut -f 1)"
 }
 
 create_pr() {
